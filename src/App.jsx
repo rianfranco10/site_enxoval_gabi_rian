@@ -670,7 +670,7 @@ export default function App() {
       <div className="max-w-5xl mx-auto px-5 sm:px-8 pt-10 pb-6 text-center">
         <p className="text-[11px] tracking-[0.2em] uppercase text-terracotta-dark mb-2">Nosso enxoval</p>
         <h1 className="font-display text-[34px] sm:text-[44px] leading-tight text-ink">Enxoval de Casa Nova</h1>
-        <p className="font-display italic text-[20px] sm:text-[24px] text-olive-dark mt-1">Gabriela &amp; Rian</p>
+        <p className="font-display italic text-[20px] sm:text-[24px] text-olive-dark mt-1">Gabi &amp; Rian</p>
         <p className="text-[14px] text-warmgray max-w-md mx-auto mt-3 leading-relaxed">
           Escolhemos, com carinho, tudo que sonhamos pra nossa casa. Fica à vontade pra dar uma olhada — e, se quiser, reservar algum item.
         </p>
