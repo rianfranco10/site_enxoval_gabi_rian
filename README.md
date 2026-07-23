@@ -1,4 +1,4 @@
-# Enxoval de Casa Nova — Gabriela & Rian
+# Enxoval de Casa Nova — Gabi & Rian
 
 Aplicação React + Tailwind + Vite, com banco de dados real (Supabase). Qualquer edição feita no modo Admin aparece **na hora** pra qualquer pessoa que abrir o site — sem exportar nada, sem republicar.
 
