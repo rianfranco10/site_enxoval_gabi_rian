@@ -672,7 +672,7 @@ export default function App() {
         <h1 className="font-display text-[34px] sm:text-[44px] leading-tight text-ink">Enxoval de Casa Nova</h1>
         <p className="font-display italic text-[20px] sm:text-[24px] text-olive-dark mt-1">Gabi &amp; Rian</p>
         <p className="text-[14px] text-warmgray max-w-md mx-auto mt-3 leading-relaxed">
-          Escolhemos, com carinho, tudo que sonhamos pra nossa casa. Fica à vontade pra dar uma olhada — e, se quiser, reservar algum item.
+          Aqui reunimos, cômodo por cômodo, tudo que estamos escolhendo pra nossa casa nova. Clique numa categoria pra ver os itens e acessar os links de cada peça.
         </p>
       </div>
 
