@@ -721,8 +721,18 @@ export default function App() {
   };
 
   const changeStatus = async (id, status) => {
-    const { error } = await supabase.from("items").update({ status }).eq("id", id);
-    if (!error) setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+    const clearGifter = status === "nao_comprado";
+    const payload = clearGifter ? { status, reserved_by_name: null, reserved_by_phone: null } : { status };
+    const { error } = await supabase.from("items").update(payload).eq("id", id);
+    if (!error) {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? { ...i, status, ...(clearGifter ? { giftedByName: "", giftedByPhone: "" } : {}) }
+            : i
+        )
+      );
+    }
   };
 
   const confirmGift = async ({ name, phone }) => {
