@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChefHat, Bath, Shirt, Flame, Sofa, BedDouble, Package, Tag, LayoutGrid,
   Plus, Pencil, Trash2, ExternalLink, Image as ImageIcon, Loader2, Check, X,
-  Link2, Lock, LogOut, Download, Upload, Wand2, Bookmark, ShieldCheck,
+  Link2, Lock, LogOut, Download, Upload, Wand2, Bookmark, ShieldCheck, Search,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
@@ -484,6 +484,7 @@ export default function App() {
 
   const [activeCategory, setActiveCategory] = useState("todas");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -634,12 +635,14 @@ export default function App() {
   );
 
   const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return items.filter((i) => {
-      const catOk = activeCategory === "todas" || i.category === activeCategory;
+      const searchOk = q === "" || (i.title || "").toLowerCase().includes(q);
+      const catOk = q !== "" ? true : (activeCategory === "todas" || i.category === activeCategory);
       const statusOk = statusFilter === "todos" || i.status === statusFilter;
-      return catOk && statusOk;
+      return searchOk && catOk && statusOk;
     });
-  }, [items, activeCategory, statusFilter]);
+  }, [items, activeCategory, statusFilter, searchQuery]);
 
   const categoryLabel = (id) => categories.find((c) => c.id === id)?.label || "Outros";
 
@@ -674,6 +677,28 @@ export default function App() {
         <p className="text-[14px] text-warmgray max-w-md mx-auto mt-3 leading-relaxed">
           Aqui reunimos, cômodo por cômodo, tudo que estamos escolhendo pra nossa casa nova. Clique numa categoria pra ver os itens e acessar os links de cada peça.
         </p>
+      </div>
+
+      {/* SEARCH */}
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 pb-2">
+        <div className="relative max-w-md mx-auto">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warmgray" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar item pelo nome..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-full border border-line bg-white text-[13.5px] outline-none focus:border-olive transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-warmgray hover:text-ink"
+              title="Limpar busca"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ADMIN TOOLBAR */}
@@ -757,7 +782,9 @@ export default function App() {
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-16 text-warmgray">
-            <p className="text-[14px]">Nenhum item encontrado por aqui ainda.</p>
+            <p className="text-[14px]">
+              {searchQuery.trim() ? `Nenhum item encontrado para "${searchQuery.trim()}".` : "Nenhum item encontrado por aqui ainda."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
