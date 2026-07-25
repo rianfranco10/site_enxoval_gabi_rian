@@ -706,6 +706,10 @@ export default function App() {
 
   const saveProduct = async (form) => {
     const row = itemToRow(form);
+    if (form.status === "nao_comprado") {
+      row.reserved_by_name = null;
+      row.reserved_by_phone = null;
+    }
     const { error } = form.id
       ? await supabase.from("items").update(row).eq("id", form.id)
       : await supabase.from("items").insert(row);
