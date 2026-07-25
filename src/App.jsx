@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChefHat, Bath, Shirt, Flame, Sofa, BedDouble, Package, Tag, LayoutGrid,
   Plus, Pencil, Trash2, ExternalLink, Image as ImageIcon, Loader2, Check, X,
-  Link2, Lock, LogOut, Download, Upload, Wand2, Bookmark, ShieldCheck, Search,
+  Link2, Lock, LogOut, Download, Upload, Wand2, Bookmark, ShieldCheck, Search, Gift, Calculator, Phone, User,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
@@ -25,6 +25,7 @@ const DEFAULT_CATEGORIES = [
 const STATUS = {
   nao_comprado: { label: "Não comprado", badge: "bg-[#EDE7DC] text-warmgray" },
   reservado: { label: "Reservado", badge: "bg-blush-light text-terracotta-dark" },
+  presente: { label: "Presente", badge: "bg-[#F4E8C8] text-[#8C6D1F]" },
   comprado: { label: "Já comprado", badge: "bg-olive-light/40 text-olive-dark" },
 };
 
@@ -108,6 +109,8 @@ function rowToItem(row) {
     price: row.price !== null && row.price !== undefined ? String(row.price) : "",
     status: row.status || "nao_comprado",
     notes: row.notes || "",
+    giftedByName: row.reserved_by_name || "",
+    giftedByPhone: row.reserved_by_phone || "",
     createdAt: row.created_at,
   };
 }
@@ -136,7 +139,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function ProductCard({ item, categoryLabel, isAdmin, onEdit, onDelete, onReserve, onChangeStatus }) {
+function ProductCard({ item, categoryLabel, isAdmin, onEdit, onDelete, onGift, onChangeStatus }) {
   const [confirming, setConfirming] = useState(false);
   const price = formatPrice(item.price);
 
@@ -173,6 +176,12 @@ function ProductCard({ item, categoryLabel, isAdmin, onEdit, onDelete, onReserve
           <p className="text-[12.5px] text-warmgray leading-snug line-clamp-2">{item.notes}</p>
         )}
 
+        {isAdmin && item.giftedByName && (
+          <p className="text-[12px] text-terracotta-dark bg-blush-light/60 rounded-lg px-2.5 py-1.5 leading-snug">
+            🎁 {item.giftedByName}{item.giftedByPhone ? ` · ${item.giftedByPhone}` : ""}
+          </p>
+        )}
+
         <div className="flex items-center gap-2 mt-1">
           <a
             href={item.url}
@@ -185,11 +194,10 @@ function ProductCard({ item, categoryLabel, isAdmin, onEdit, onDelete, onReserve
 
           {!isAdmin && item.status === "nao_comprado" && (
             <button
-              onClick={() => onReserve(item.id)}
-              title="Reservar este item"
-              className="p-2 rounded-xl border border-line text-terracotta hover:bg-blush-light transition-colors"
+              onClick={() => onGift(item)}
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-2 rounded-xl border border-terracotta text-terracotta-dark hover:bg-blush-light transition-colors"
             >
-              <Bookmark size={15} />
+              <Gift size={14} /> Presentear
             </button>
           )}
 
@@ -450,6 +458,140 @@ function ProductModal({ initialItem, categories, onSave, onClose }) {
   );
 }
 
+function GiftModal({ item, onConfirm, onClose }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = () => {
+    if (!name.trim() || !phone.trim()) {
+      setError("Preenche seu nome e telefone pra gente saber quem presenteou 💛");
+      return;
+    }
+    onConfirm({ name: name.trim(), phone: phone.trim() });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-ink/50" onClick={onClose}>
+      <div className="bg-paper rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-2 text-terracotta-dark">
+          <Gift size={16} />
+          <p className="text-[11px] font-semibold tracking-wide uppercase">Presentear</p>
+        </div>
+        <h2 className="font-display text-[20px] text-ink mb-1">{item.title}</h2>
+        <p className="text-[13px] text-warmgray mb-4">
+          Deixa seu nome e telefone pra gente saber quem nos presenteou. Esse item fica reservado assim que você confirmar.
+        </p>
+
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line">
+            <User size={14} className="text-warmgray shrink-0" />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Seu nome"
+              className="w-full text-[13.5px] outline-none bg-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line">
+            <Phone size={14} className="text-warmgray shrink-0" />
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Telefone com DDD"
+              className="w-full text-[13.5px] outline-none bg-transparent"
+            />
+          </div>
+          {error && <p className="text-[12.5px] text-terracotta-dark">{error}</p>}
+          <div className="flex gap-2 mt-1">
+            <button onClick={handleSubmit} className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-olive text-white text-[13px] font-medium hover:bg-olive-dark transition-colors">
+              <Gift size={14} /> Confirmar presente
+            </button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-cream text-ink text-[13px] font-medium">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TotalsModal({ items, categories, onClose }) {
+  const statusKeys = Object.keys(STATUS);
+
+  const byStatus = statusKeys.map((s) => {
+    const list = items.filter((i) => i.status === s);
+    return { key: s, label: STATUS[s].label, count: list.length, sum: list.reduce((acc, i) => acc + (Number(i.price) || 0), 0) };
+  });
+
+  const byCategory = categories.map((c) => {
+    const row = { id: c.id, label: c.label, total: 0 };
+    statusKeys.forEach((s) => {
+      row[s] = items.filter((i) => i.category === c.id && i.status === s).reduce((acc, i) => acc + (Number(i.price) || 0), 0);
+      row.total += row[s];
+    });
+    return row;
+  });
+
+  const grandTotal = items.reduce((acc, i) => acc + (Number(i.price) || 0), 0);
+
+  const money = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-ink/50 overflow-y-auto" onClick={onClose}>
+      <div className="bg-paper rounded-2xl p-6 max-w-2xl w-full shadow-xl my-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-1 text-terracotta-dark">
+          <Calculator size={16} />
+          <p className="text-[11px] font-semibold tracking-wide uppercase">Só admin vê isso</p>
+        </div>
+        <h2 className="font-display text-[22px] text-ink mb-4">Resumo de valores</h2>
+
+        <div className="bg-olive-light/20 rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
+          <span className="text-[13.5px] text-ink font-medium">Total geral (todos os itens)</span>
+          <span className="text-[17px] font-semibold text-olive-dark">{money(grandTotal)}</span>
+        </div>
+
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-warmgray mb-2">Por status</p>
+        <div className="flex flex-col gap-1.5 mb-6">
+          {byStatus.map((s) => (
+            <div key={s.key} className="flex items-center justify-between text-[13px] px-3 py-2 rounded-lg bg-cream">
+              <span className="text-ink">{s.label} <span className="text-warmgray">({s.count})</span></span>
+              <span className="font-medium text-ink">{money(s.sum)}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-warmgray mb-2">Por categoria</p>
+        <div className="overflow-x-auto -mx-1">
+          <table className="w-full text-[12px] min-w-[560px]">
+            <thead>
+              <tr className="text-left text-warmgray">
+                <th className="px-2 py-1.5 font-medium">Categoria</th>
+                {statusKeys.map((s) => (
+                  <th key={s} className="px-2 py-1.5 font-medium text-right">{STATUS[s].label}</th>
+                ))}
+                <th className="px-2 py-1.5 font-medium text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byCategory.map((row) => (
+                <tr key={row.id} className="border-t border-line">
+                  <td className="px-2 py-1.5 text-ink">{row.label}</td>
+                  {statusKeys.map((s) => (
+                    <td key={s} className="px-2 py-1.5 text-right text-warmgray">{row[s] ? money(row[s]) : "—"}</td>
+                  ))}
+                  <td className="px-2 py-1.5 text-right font-medium text-ink">{money(row.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <button onClick={onClose} className="mt-5 w-full py-2.5 rounded-xl bg-cream text-ink text-[13px] font-medium">Fechar</button>
+      </div>
+    </div>
+  );
+}
+
 function AddCategoryModal({ onSave, onClose }) {
   const [name, setName] = useState("");
   return (
@@ -493,6 +635,8 @@ export default function App() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [giftingItem, setGiftingItem] = useState(null);
+  const [showTotals, setShowTotals] = useState(false);
 
   const importInputRef = useRef(null);
 
@@ -581,8 +725,15 @@ export default function App() {
     if (!error) setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
   };
 
-  const reserveItem = (id) => {
-    if (confirm("Reservar este item pra você?")) changeStatus(id, "reservado");
+  const confirmGift = async ({ name, phone }) => {
+    if (!giftingItem) return;
+    const { error } = await supabase
+      .from("items")
+      .update({ status: "reservado", reserved_by_name: name, reserved_by_phone: phone })
+      .eq("id", giftingItem.id);
+    if (error) { alert("Não foi possível confirmar. Tenta de novo."); return; }
+    setItems((prev) => prev.map((i) => (i.id === giftingItem.id ? { ...i, status: "reservado", giftedByName: name, giftedByPhone: phone } : i)));
+    setGiftingItem(null);
   };
 
   const addCategory = async (label) => {
@@ -634,15 +785,20 @@ export default function App() {
     [categories]
   );
 
+  const visibleItems = useMemo(
+    () => (isAdmin ? items : items.filter((i) => i.status === "nao_comprado")),
+    [items, isAdmin]
+  );
+
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return items.filter((i) => {
+    return visibleItems.filter((i) => {
       const searchOk = q === "" || (i.title || "").toLowerCase().includes(q);
       const catOk = q !== "" ? true : (activeCategory === "todas" || i.category === activeCategory);
-      const statusOk = statusFilter === "todos" || i.status === statusFilter;
+      const statusOk = isAdmin ? (statusFilter === "todos" || i.status === statusFilter) : true;
       return searchOk && catOk && statusOk;
     });
-  }, [items, activeCategory, statusFilter, searchQuery]);
+  }, [visibleItems, activeCategory, statusFilter, searchQuery, isAdmin]);
 
   const categoryLabel = (id) => categories.find((c) => c.id === id)?.label || "Outros";
 
@@ -711,6 +867,9 @@ export default function App() {
             <button onClick={() => setShowCategoryModal(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-2 rounded-xl border border-line text-ink hover:bg-cream transition-colors">
               <Tag size={14} /> Nova categoria
             </button>
+            <button onClick={() => setShowTotals(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-2 rounded-xl border border-line text-ink hover:bg-cream transition-colors">
+              <Calculator size={14} /> Ver Totais
+            </button>
             <button onClick={handleExport} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-2 rounded-xl border border-line text-ink hover:bg-cream transition-colors">
               <Download size={14} /> Backup (Exportar JSON)
             </button>
@@ -726,7 +885,7 @@ export default function App() {
       <div className="max-w-5xl mx-auto px-5 sm:px-8 py-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {displayedCategories.map((c) => {
-            const count = c.id === "todas" ? items.length : items.filter((i) => i.category === c.id).length;
+            const count = c.id === "todas" ? visibleItems.length : visibleItems.filter((i) => i.category === c.id).length;
             const active = activeCategory === c.id;
             return (
               <button
@@ -749,25 +908,22 @@ export default function App() {
           )}
         </div>
 
-        {/* STATUS FILTER */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
-          {[
-            { id: "todos", label: "Todos" },
-            { id: "nao_comprado", label: STATUS.nao_comprado.label },
-            { id: "reservado", label: STATUS.reservado.label },
-            { id: "comprado", label: STATUS.comprado.label },
-          ].map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setStatusFilter(s.id)}
-              className={`text-[12px] font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                statusFilter === s.id ? "bg-terracotta text-white border-terracotta" : "bg-white text-warmgray border-line hover:bg-cream"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        {/* STATUS FILTER — só admin, visitante só vê "não comprado" mesmo */}
+        {isAdmin && (
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {[{ id: "todos", label: "Todos" }, ...Object.entries(STATUS).map(([id, s]) => ({ id, label: s.label }))].map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStatusFilter(s.id)}
+                className={`text-[12px] font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                  statusFilter === s.id ? "bg-terracotta text-white border-terracotta" : "bg-white text-warmgray border-line hover:bg-cream"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* GRID */}
@@ -796,7 +952,7 @@ export default function App() {
                 isAdmin={isAdmin}
                 onEdit={openEditModal}
                 onDelete={deleteProduct}
-                onReserve={reserveItem}
+                onGift={(item) => setGiftingItem(item)}
                 onChangeStatus={changeStatus}
               />
             ))}
@@ -820,6 +976,12 @@ export default function App() {
       )}
       {showCategoryModal && (
         <AddCategoryModal onSave={addCategory} onClose={() => setShowCategoryModal(false)} />
+      )}
+      {giftingItem && (
+        <GiftModal item={giftingItem} onConfirm={confirmGift} onClose={() => setGiftingItem(null)} />
+      )}
+      {showTotals && (
+        <TotalsModal items={items} categories={categories} onClose={() => setShowTotals(false)} />
       )}
     </div>
   );
